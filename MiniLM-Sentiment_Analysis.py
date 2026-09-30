@@ -10,7 +10,8 @@ import numpy as np
 #model
 model_id="sentence-transformers/all-MiniLM-L12-v2"
 tokenizer=AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForSequenceClassification.from_pretrained(model_id, num_labels=5)
+model = AutoModelForSequenceClassification.from_pretrained(model_id, num_labels=3)
+
 
 #load dataset
 full_dataset = pd.read_csv(
@@ -21,6 +22,14 @@ full_dataset = pd.read_csv(
 full_dataset=full_dataset[["text","label"]]
 print(len(full_dataset))
 print(full_dataset.info())
+
+label_map = {0: 0, 2: 1, 4: 2}
+
+unexpected_labels = set(full_dataset["label"].unique()) - set(label_map)
+if unexpected_labels:
+    raise ValueError(f"Unexpected labels in dataset: {unexpected_labels}")
+
+full_dataset["label"] = full_dataset["label"].map(label_map).astype("int64")
 
 def clean_tweet(text: str) -> str:
     text = html.unescape(text)
@@ -64,8 +73,8 @@ def compute_metrics(eval_pred):
 training_args = TrainingArguments(
     output_dir="./model/minilm_sentiment140_output",
     num_train_epochs=2,
-    per_device_train_batch_size=256,  
-    per_device_eval_batch_size=256,
+    per_device_train_batch_size=128,  
+    per_device_eval_batch_size=128,
     learning_rate=3e-5,
     warmup_steps=1425,
     weight_decay=0.01,
