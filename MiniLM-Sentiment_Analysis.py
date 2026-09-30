@@ -8,9 +8,18 @@ import evaluate
 import numpy as np
 
 #model
-model_id="sentence-transformers/all-MiniLM-L12-v2"
-tokenizer=AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForSequenceClassification.from_pretrained(model_id, num_labels=3)
+model_id = "sentence-transformers/all-MiniLM-L12-v2"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+id2label = {0: "NEGATIVE", 1: "POSITIVE"}
+label2id = {"NEGATIVE": 0, "POSITIVE": 1}
+
+model = AutoModelForSequenceClassification.from_pretrained(
+    model_id,
+    num_labels=2,
+    id2label=id2label,
+    label2id=label2id
+)
 
 
 #load dataset
@@ -19,11 +28,12 @@ full_dataset = pd.read_csv(
     encoding="latin-1",
     names=["label", "id", "date", "flag", "user", "text"]
 )
-full_dataset=full_dataset[["text","label"]]
-print(len(full_dataset))
+full_dataset = full_dataset[["text", "label"]]
+full_dataset.drop_duplicates(subset=["text"], inplace=True)
+print(f"Total samples after deduplication: {len(full_dataset)}")
 print(full_dataset.info())
 
-label_map = {0: 0, 2: 1, 4: 2}
+label_map = {0: 0, 4: 1}
 
 unexpected_labels = set(full_dataset["label"].unique()) - set(label_map)
 if unexpected_labels:
@@ -52,9 +62,9 @@ print(len(split_dataset["test"]))
 
 print(model.config)
 
-max_length=256
 def tokenize_function(examples):
-    return tokenizer(examples["text"], padding="max_length", truncation=True,max_length=max_length)
+    return tokenizer(examples["text"], truncation=True, max_length=128)
+
 tokenized_train_data = split_dataset["train"].map(tokenize_function, batched=True)
 tokenized_test_data = split_dataset["test"].map(tokenize_function, batched=True)
 
